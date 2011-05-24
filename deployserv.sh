@@ -32,8 +32,9 @@ Choose *one* of the following options:
 			e.g. 08 
     -r  --  Host Range: Specify a range of hosts within a rack using square brackets,
 			e.g. f01u[01-16]
-    -s  --  Single Host, e.g. f08u09
-	-h  --  Display this help screen
+    -s  --  Single Host: specify a single hostname,
+			e.g. f08u09
+    -h  --  Display this help screen
 
 EOF
 }
