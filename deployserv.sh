@@ -41,16 +41,17 @@ EOF
 function link_rack(){
     if [ -z "$1" ]; then
         echo "You must specify a cluster rack when using the -f option."
-    else
-        rackproxy=$(echo f"$1"u01)
+	else
+        # use first node in rack for hostip lookup, then chop final hex pair off to address all nodes in rack
+		rackproxy=$(echo f"$1"u01) 
         rack_address=$(gethostip $rackproxy | awk '{gsub("0B$","");print $3}') || echo "Could not get hostip."
     fi
 
     # declare an array to hold the config names
     declare -a cfgARRAY
-    let local index=0
+    local index=0
         
-    # Set up the interface
+    # set up the config menu
     echo ""
     echo "Avaliable configurations:"
             
@@ -82,8 +83,11 @@ function link_rack(){
 }
 
 function rack_hosts(){
+    # add f and u around the supplied rack number
     local rack=$(echo f"$1"u)
+    # do for each of 36 nodes
     for i in {1..36}; do
+        #
         echo $rack$(printf "%02d" $i)
     done
 }
@@ -127,83 +131,25 @@ function link_pxe(){
 }
 
 function reboot_host(){
-    do_reboot=y
-    if [[ $SKIP_PROMPTS == 0 ]]; then
-        # prompt to reboot the target server
-        echo -n "Reboot $1 now? [y/n]: "
-        read -n 2 do_reboot
-    fi
-    if [[ $do_reboot == y ]]; then
-        if [[ $1 == f* ]]; then # checks if server is in the f row (cluster node)
-            #echo "Would have rebooted ${1}i" 
-            ipmitool -H ${1}i -U root -P cfipmi chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
-        else
-            #echo "Would have rebooted ${1}i"
-            ipmitool -H ${1}i -U root -P ipmimgmt chassis power cycle || echo "Couldn't reboot. Is ip mi set up properly?"
-        fi
-    elif [[ $do_reboot == n ]]; then
-        echo "Exiting."
-        exit 0
+    if [[ $1 == f* ]]; then # checks if server is in the f row (cluster node)
+        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
     else
-        echo ""
-        echo "You didn't type 'y' or 'n'."
-        exit 1
+        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ip mi set up properly?"
     fi
 }
 
 function rm_link(){
-    rmlink=y
-    if [[ $SKIP_PROMPTS == 0 ]]; then
-        # prompt to auto-remove line
-        echo -n "Remove PXE install link in 5 minutes? [y/n]: "
-        read -n 2 rmlink
-    fi
-    if [[ $rmlink == y ]]; then
-        echo "rm -f ${pxe}/$hostip" | at now + 5 minutes
-    elif [[ $rmlink == n ]]; then
-        continue
-    else
-        echo ""
-        echo "You didn't type 'y' or 'n'."
-        exit 1
-    fi
+    # remove PXE link after 5 minutes to prevent additional reinstall
+    echo "rm -f ${pxe}/$hostip" | at now + 5 minutes
 }
 
 function rm_rack_link(){
-    rmrlink=y
-    if [[ $SKIP_PROMPTS == 0 ]]; then
-        # prompt to auto-remove line
-        echo -n "Remove PXE install link in 5 minutes? [y/n]: "
-        read -n 2 rmrlink
-    fi
-    if [[ $rmrlink == y ]]; then
-        echo "rm -f ${pxe}/$rack_address" | at now + 5 minutes
-    elif [[ $rmrlink == n ]]; then
-        continue
-    else
-        echo ""
-        echo "You didn't type 'y' or 'n'."
-        exit 1
-    fi
+    # remove PXE link after 5 minutes to prevent additional reinstall
+    echo "rm -f ${pxe}/$rack_address" | at now + 5 minutes
 }
 
 function clean_pupcert(){
-    has_puppet=y
-    if [[ $SKIP_PROMPTS == 0 ]]; then
-        # prompt for puppet management
-        echo -n "Is $server managed by Puppet? [y/n]: "
-        read -n 2 has_puppet
-    fi
-    if [[ $has_puppet == y ]]; then
-        ssh root@puppet puppetca --clean $1.int.janelia.org
-    elif [[ $has_puppet == n ]]; then
-        echo "Done."
-        exit 0
-    else
-        echo ""
-        echo "You didn't type 'y' or 'n'."
-        exit 1
-    fi
+    ssh root@puppet puppetca --clean $1.int.janelia.org
 }
 
 ############
