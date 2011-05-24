@@ -4,8 +4,7 @@
 # DEPLOYSERV -- by Peter -- last modified 05-23-2011
 #
 # This script automates the process of re-deploying linux servers in our
-# datacenter, optimized it for deploying multiple servers at a time.
-# See help section for more info.
+# datacenter. See help function a few lines down for more info.
 ########################################################################
 
 #############
