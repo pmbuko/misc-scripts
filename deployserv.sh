@@ -29,11 +29,11 @@ to chosen PXE boot config, then reeboot and handle the subsequent PXE link remov
 
 Choose *one* of the following options:
     -f  --  Cluster Rack: specify an entire cluster rack using the double-digit format,
-			e.g. 08 
+            e.g. 08 
     -r  --  Host Range: Specify a range of hosts within a rack using square brackets,
-			e.g. f01u[01-16]
+            e.g. f01u[01-16]
     -s  --  Single Host: specify a single hostname,
-			e.g. f08u09
+            e.g. f08u09
     -h  --  Display this help screen
 
 EOF
