@@ -134,7 +134,7 @@ function reboot_host(){
     if [[ $1 == f* ]]; then # checks if server is in the f row (cluster node)
         ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
     else
-        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ip mi set up properly?"
+        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
     fi
 }
 
