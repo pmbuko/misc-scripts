@@ -1,18 +1,18 @@
 #!/bin/bash
 
-########################################################################
-# DEPLOYSERV -- by Peter -- last modified 05-23-2011
+###############################################################################
+# DEPLOYSERV -- by Peter -- last modified 06-09-2011
 #
-# This script automates the process of re-deploying linux servers in our
-# datacenter. See help function a few lines down for more info.
-########################################################################
+# This script automates the process of re-deploying linux servers. I optimized
+# it for deploying multiple servers at a time. See help section for more info.
+###############################################################################
 
 #############
 # VARIABLES #
 #############
 
 pxe=/tftpboot/linux-install/pxelinux.cfg # path to the pxe install configs
-pxecfgs=$(ls $pxe | grep ^rhel)          # finds the config files that start with rhel
+pxecfgs=$(ls -1 $pxe | grep .cfg$)       # finds the config files that start with rhel
 
 #############
 # FUNCTIONS #
@@ -20,19 +20,25 @@ pxecfgs=$(ls $pxe | grep ^rhel)          # finds the config files that start wit
 
 function help {
     cat<<EOF
-Deploy Server Tool
-Utility to redeploy linux servers in the datacenter. It will link specified servers
-to chosen PXE boot config, then reeboot and handle the subsequent PXE link removal.
 
-`basename $0`: `basename $0` [-f Cluster Rack] [-r Range] [-s Single Host]
+DEPLOY SERVER TOOL
 
-Choose *one* of the following options:
-    -f  --  Cluster Rack: specify an entire cluster rack using the double-digit format,
-            e.g. 08 
+Utility to redeploy linux servers in the datacenter. It will link specified server(s)
+to chosen PXE boot config, then reboot and handle the subsequent PXE link removal.
+
+`basename $0`: `basename $0` [-f Cluster Rack] [-r Host Range] [-s Single Host(s)] [-h]
+
+You must specify *one* of the following options:
+
+    -f  --  Cluster Rack: Specify an entire cluster rack using the double-digit format,
+            e.g. `basename $0` -f 08 
+
     -r  --  Host Range: Specify a range of hosts within a rack using square brackets,
-            e.g. f01u[01-16]
-    -s  --  Single Host: specify a single hostname,
-            e.g. f08u09
+            e.g. `basename $0` -r f08u[01-16]
+
+    -s  --  Single Host(s): Specify one or more single hosts using spaces,
+            e.g. `basename $0` -s f08u17 f10u02 f12u21
+
     -h  --  Display this help screen
 
 EOF
@@ -41,35 +47,35 @@ EOF
 function link_rack(){
     if [ -z "$1" ]; then
         echo "You must specify a cluster rack when using the -f option."
-	else
-        # use first node in rack for hostip lookup, then chop final hex pair off to address all nodes in rack
-		rackproxy=$(echo f"$1"u01) 
+    else
+        rackproxy=$(echo f"$1"u01)
         rack_address=$(gethostip $rackproxy | awk '{gsub("0B$","");print $3}') || echo "Could not get hostip."
     fi
 
     # declare an array to hold the config names
     declare -a cfgARRAY
-    local index=0
+    let local index=0
         
-    # set up the config menu
+    # Set up the interface
     echo ""
-    echo "Avaliable configurations:"
+    echo "Available configurations:"
             
     # populate array and display config choices
     for cfg in $pxecfgs; do
         cfgARRAY[$index]="$cfg"
-        echo "[$index]: $cfg"
+        if [ $index -lt 10 ]; then sp=" "; else sp=""; fi
+        echo "[$sp$index]: $cfg"
         ((index++))
     done
     ((index--))
 
     echo ""
-    echo "[Q]: Quit"
+    echo " [Q]: Quit"
     
     # prompt user to select a config
     echo ""
     echo -n "Choose a config to deploy to cluster rack f$1 . [0-$index]: "
-    read -n 2 achoice
+    read -n 3 achoice
         
     # check choice for sanity
     if [ "$achoice" = "Q" ] || [ "$achoice" = "q" ]; then
@@ -79,15 +85,15 @@ function link_rack(){
         cd $pxe
         ln -fs ${cfgARRAY[$achoice]} $rack_address
         echo "Created link: ${cfgARRAY[$achoice]} -> $rack_address."
+    else
+        echo "Haha, you fool! That was an invalid selection. Now you have to start over."
+        exit 1
     fi
 }
 
 function rack_hosts(){
-    # add f and u around the supplied rack number
     local rack=$(echo f"$1"u)
-    # do for each of 36 nodes
     for i in {1..36}; do
-        #
         echo $rack$(printf "%02d" $i)
     done
 }
@@ -112,6 +118,35 @@ function parse_range(){
     fi
 }
 
+function choose_pxe () {
+    # declare an array to hold the config names
+    declare -a cfgARRAY
+    index=0
+     
+    # Set up the interface
+    echo ""
+    echo "Available configurations:"
+     
+    # populate array and display config choices
+    for cfg in $pxecfgs; do
+        cfgARRAY[$index]="$cfg"
+        if [ $index -lt 10 ]; then sp=" "; else sp=""; fi
+        echo "[$sp$index]: $cfg"
+        ((index++))
+    done
+    ((index--))
+
+    echo ""
+    echo " [Q]: Quit"
+    
+    # prompt user to select a config
+    echo ""
+    echo -n "Choose a config to deploy. [0-$index]: "
+    read -n 3 bchoice
+     
+    echo ${cfgARRAY[$bchoice]}
+}
+
 function link_pxe(){
     pxe_cfg=$2
     # check choice for sanity
@@ -132,19 +167,17 @@ function link_pxe(){
 
 function reboot_host(){
     if [[ $1 == f* ]]; then # checks if server is in the f row (cluster node)
-        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
+        ipmitool -H ${1}i -U root -P cfipmi chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
     else
-        ipmitool -H ${1}i -U root -P [password] chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
+        ipmitool -H ${1}i -U root -P ipmimgmt chassis power cycle || echo "Couldn't reboot. Is ipmi set up properly?"
     fi
 }
 
 function rm_link(){
-    # remove PXE link after 5 minutes to prevent additional reinstall
     echo "rm -f ${pxe}/$hostip" | at now + 5 minutes
 }
 
 function rm_rack_link(){
-    # remove PXE link after 5 minutes to prevent additional reinstall
     echo "rm -f ${pxe}/$rack_address" | at now + 5 minutes
 }
 
@@ -156,7 +189,7 @@ function clean_pupcert(){
 # WORKFLOW #
 ############
 
-if [ $# == 0 ]; then help; else
+if [[ $# < 2 ]]; then help; else
     while getopts :f:r:s:h opt; do
         case "$opt" in
             f)  CLUSTER_RACK="$OPTARG"
@@ -170,7 +203,8 @@ if [ $# == 0 ]; then help; else
                 done
                 echo -n "Removing rack link..."; rm_rack_link $CLUSTER_RACK; echo " OK"
                 echo "--------------------------------"
-                echo "Done.";;
+                echo "Done."
+                exit 0;;
 
             r)  HOST_RANGE="$OPTARG"
                 HOST_LIST=$(parse_range $HOST_RANGE)
@@ -181,24 +215,31 @@ if [ $# == 0 ]; then help; else
 
                 # Set up the interface
                 echo ""
-                echo "Avaliable configurations:"
+                echo "Available configurations:"
 
                 # populate array and display config choices
                 for cfg in $pxecfgs; do
                     cfgARRAY[$index]="$cfg"
-                    echo "[$index]: $cfg"
+                    if [ $index -lt 10 ]; then sp=" "; else sp=""; fi
+                    echo "[$sp$index]: $cfg"
                     ((index++))
                 done
                 ((index--))
 
                 echo ""
-                echo "[Q]: Quit"
+                echo " [Q]: Quit"
 
                 # prompt user to select a config
                 echo ""
                 echo -n "Choose a config to deploy. [0-$index]: "
-                read -n 2 choice
-                pxe_choice=${cfgARRAY[$choice]} 
+                read -n 3 choice
+                if [ "$choice" = "Q" ] || [ "$choice" = "q" ]; then exit 0; fi
+                if [ "0" -le "$choice" ] && [ "$choice" -le "$index" ]; then  # proceed if choice is within expected range
+                    pxe_choice=${cfgARRAY[$choice]}
+                else
+                    echo "Haha, you fool! That was an invalid selection. Now you have to start over."
+                    exit 1
+                fi
 
                 for host in $HOST_LIST; do
                     echo "--------------------------------"
@@ -210,49 +251,64 @@ if [ $# == 0 ]; then help; else
                     echo ""
                 done
                 echo "--------------------------------"
-                echo "Done.";;
+                echo "Done."
+                exit 0;;
 
-            s)  SINGLE_HOST="$OPTARG"
-                check_single $SINGLE_HOST
-                
+            s)  SINGLE_HOSTS="$OPTARG"
+                for host in $SINGLE_HOSTS; do
+                    check_single $host
+                done
                 # declare an array to hold the config names
                 declare -a cfgARRAY
                 index=0
 
                 # Set up the interface
                 echo ""
-                echo "Avaliable configurations:"
+                echo "Available configurations:"
 
                 # populate array and display config choices
                 for cfg in $pxecfgs; do
                     cfgARRAY[$index]="$cfg"
-                    echo "[$index]: $cfg"
+                    if [ $index -lt 10 ]; then sp=" "; else sp=""; fi
+                    echo "[$sp$index]: $cfg"
                     ((index++))
                 done
                 ((index--))
 
                 echo ""
-                echo "[Q]: Quit"
+                echo " [Q]: Quit"
 
                 # prompt user to select a config
                 echo ""
                 echo -n "Choose a config to deploy. [0-$index]: "
-                read -n 2 choice
-                pxe_choice=${cfgARRAY[$choice]} 
+                read -n 3 choice
+                if [ "$choice" = "Q" ] || [ "$choice" = "q" ]; then exit 0; fi
+                if [ "0" -le "$choice" ] && [ "$choice" -le "$index" ]; then  # proceed if choice is within expected range
+                    pxe_choice=${cfgARRAY[$choice]}
+                else
+                    echo "Haha, you fool! That was an invalid selection. Now you have to start over."
+                    exit 1
+                fi
 
-                echo "Starting deployment of $SINGLE_HOST..."
-                link_pxe $SINGLE_HOST $pxe_choice
-                echo -n "Rebooting..."; reboot_host $host > /dev/null && echo " OK"
-                echo -n "Removing PXE Link..."; rm_link $SINGLE_HOST && echo " OK"
-                echo -n "Cleaning Puppet certificate..."; clean_pupcert $SINGLE_HOST > /dev/null && echo " OK"
-                echo "Done.";;
+                for host in $SINGLE_HOSTS; do
+                    echo "--------------------------------"
+                    echo "Starting deployment of $host..."
+                    link_pxe $host $pxe_choice
+                    echo -n "Rebooting..."; reboot_host $host > /dev/null && echo " OK"
+                    echo -n "Removing PXE Link..."; rm_link $host && echo " OK"
+                    echo -n "Cleaning Puppet certificate..."; clean_pupcert $host > /dev/null && echo " OK"
+                    echo ""
+                done
+                echo "--------------------------------"
+                echo "Done."
+                exit 0;;
 
             h) 
                 help
                 exit 0;;
 
             \?)
-                echo "Usage: `basename $0` [-f Cluster Rack] [-r Range] [-s Single Host] [-h]"
+                echo "Usage: `basename $0` [-f Cluster Rack] [-r Host Range] [-s Single Host(s)] [-h]"
                 echo "For more help, run: `basename $0` -h"
                 exit 0;;
         esac
