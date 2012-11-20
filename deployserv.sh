@@ -12,7 +12,7 @@
 #############
 
 pxe=/tftpboot/linux-install/pxelinux.cfg # path to the pxe install configs
-pxecfgs=$(ls -1 $pxe | grep .cfg$)       # finds the config files that start with rhel
+pxecfgs=$(ls -1 $pxe | grep .cfg$)       # finds files that end with .cfg
 
 cpass=foo    # cluster node ipmi root password
 spass=bar    # other server ipmi root password
