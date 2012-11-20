@@ -14,8 +14,8 @@
 pxe=/tftpboot/linux-install/pxelinux.cfg # path to the pxe install configs
 pxecfgs=$(ls -1 $pxe | grep .cfg$)       # finds the config files that start with rhel
 
-cpass=foo       # cluster node ipmi root password
-spass=bar       # other server ipmi root password
+cpass=foo    # cluster node ipmi root password
+spass=bar    # other server ipmi root password
 
 #############
 # FUNCTIONS #
@@ -33,10 +33,10 @@ to chosen PXE boot config, then reboot and handle the subsequent PXE link remova
 
 You must specify *one* of the following options:
 
-    -f  --  F-row Cluster Rack: Specify an entire cluster rack using the double-digit format,
+    -F  --  F-row Cluster Rack: Specify an entire cluster rack using the double-digit format,
             e.g. `basename $0` -f 08
 
-    -h  --  H-row Cluster Rack: Specify an entire cluster rack using the double-digit format,
+    -H  --  H-row Cluster Rack: Specify an entire cluster rack using the double-digit format,
             e.g. `basename $0` -g 01
 
     -r  --  Host Range: Specify a range of hosts within a rack using square brackets,
