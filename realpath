@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 """
-This program takes a supplied path and expands it to explicitly show
-any symlinks. It can also show the actual, symlink-less path with
-the '-a' option.
+This program takes a supplied path and expands it to explicitly show symlinks.
+It can show non-relative symlink values with the '-f' option.
+It can show the actual, symlink-less path with the '-a' option.
 
 Examples:
 
   > realpath /tmp/pathtest/stuff
-  /tmp[/private/tmp]/pathtest/stuff[/Users/admindude/Documents/stuff]
+  /tmp[private/tmp]/pathtest/stuff[../../../Users/admindude/Documents/stuff]
 
+  > realpath -f /tmp/pathtest/stuff
+  /tmp[/private/tmp]/pathtest/stuff[/Users/admindude/Documents/stuff]
+  
   > realpath -a /tmp/pathtest/stuff
   /Users/admindude/Documents/stuff
 
@@ -40,7 +43,10 @@ def interleaved_path(path):
     path_str += this_level
     expanded_path.append(this_level)
     if os.path.islink(path_str):
-      expanded_path.append(color.BOLD + "[" + os.path.realpath(path_str) + "]"+ color.END)
+      if full:
+        expanded_path.append(color.BOLD + "[" + os.path.realpath(path_str) + "]"+ color.END)
+      else:
+        expanded_path.append(color.BOLD + "[" + os.readlink(path_str) + "]"+ color.END)
   return ("".join(expanded_path[1:]))
 
 # method to parse the path, according to selected method
@@ -56,14 +62,17 @@ def parse_path(path):
 
 # main loop
 def main():
-  global actual
+  global actual, full
   usage = "usage: %prog [options] path"
   parser = OptionParser(usage=usage)
   parser.add_option("-a", "--actual", action="store_true", dest="actual", default=False,
                     help="show the actual, non-interleaved path")
+  parser.add_option("-f", "--full", action="store_true", dest="full", default=False,
+                    help="show full symlink paths")
 
   (options, args) = parser.parse_args()
   actual = options.actual
+  full = options.full
   if len(args) != 1:
     parser.error("no path specified")
   else:
