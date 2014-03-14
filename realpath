@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+"""
+This program takes a supplied path and expands it to explicitly show
+any symlinks. It can also show the actual, symlink-less path with
+the '-a' option.
+
+Examples:
+
+  > realpath /tmp/pathtest/stuff
+  /tmp[/private/tmp]/pathtest/stuff[/Users/admindude/Documents/stuff]
+
+  > realpath -a /tmp/pathtest/stuff
+  /Users/admindude/Documents/stuff
+
+"""
 
 import os, sys
 from optparse import OptionParser
@@ -33,10 +47,8 @@ def interleaved_path(path):
 def parse_path(path):
   if os.path.exists(path):
     if actual:
-      print "Actual path:"
       print os.path.realpath(path)
     else:
-      print "Interpolated path:"
       print interleaved_path(path)
   else:
     print "Path does not exist or contains a broken symlink."
