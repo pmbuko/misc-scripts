@@ -65,10 +65,10 @@ def main():
   global actual, full
   usage = "usage: %prog [options] path"
   parser = OptionParser(usage=usage)
-  parser.add_option("-a", "--actual", action="store_true", dest="actual", default=False,
-                    help="show the actual, non-interleaved path")
   parser.add_option("-f", "--full", action="store_true", dest="full", default=False,
                     help="show full symlink paths")
+  parser.add_option("-a", "--actual", action="store_true", dest="actual", default=False,
+                    help="show the actual, non-interleaved path")
 
   (options, args) = parser.parse_args()
   actual = options.actual
