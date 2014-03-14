@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+import os, sys
+from optparse import OptionParser
+
+# set up terminal colors
+class color:
+   PURPLE = '\033[95m'
+   CYAN = '\033[96m'
+   DARKCYAN = '\033[36m'
+   BLUE = '\033[94m'
+   GREEN = '\033[92m'
+   YELLOW = '\033[93m'
+   RED = '\033[91m'
+   BOLD = '\033[1m'
+   UNDERLINE = '\033[4m'
+   END = '\033[0m'
+
+# method to contruct the interleaved path
+def interleaved_path(path):
+  expanded_path = list()
+  split_path = path.split("/")
+  path_str = ""
+  for item in split_path:
+    this_level = "/" + item
+    path_str += this_level
+    expanded_path.append(this_level)
+    if os.path.islink(path_str):
+      expanded_path.append(color.BOLD + "[" + os.path.realpath(path_str) + "]"+ color.END)
+  return ("".join(expanded_path[1:]))
+
+# method to parse the path, according to selected method
+def parse_path(path):
+  if os.path.exists(path):
+    if actual:
+      print "Actual path:"
+      print os.path.realpath(path)
+    else:
+      print "Interpolated path:"
+      print interleaved_path(path)
+  else:
+    print "Path does not exist or contains a broken symlink."
+    sys.exit(1)
+
+# main loop
+def main():
+  global actual
+  usage = "usage: %prog [options] path"
+  parser = OptionParser(usage=usage)
+  parser.add_option("-a", "--actual", action="store_true", dest="actual", default=False,
+                    help="show the actual, non-interleaved path")
+
+  (options, args) = parser.parse_args()
+  actual = options.actual
+  if len(args) != 1:
+    parser.error("no path specified")
+  else:
+    parse_path(args[0])
+
+if __name__ == "__main__":
+  main()
