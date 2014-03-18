@@ -13,7 +13,7 @@ shift 3
 until [ -z "$1" ]; do
     echo "Adding $1 to dock..."
     dockutil --add "${1}" || echo "Could not add $1 to dock."; exit 1
-    # Shift remaining arguments, so the next on becomes $1.
+    # Shift remaining arguments, so the next one becomes $1.
     shift || break
 done
 
