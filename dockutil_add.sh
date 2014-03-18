@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # debug output
-echo "All arguments:"
-num=1
-for arg; do
-    echo "$num: $arg"
-    ((num++))
-done
+#echo "All arguments:"
+#num=1
+#for arg; do
+#    echo "$num: $arg"
+#    ((num++))
+#done
 
 # check if we have the minimum number of arguments
 if [ -z "$4" ]; then
@@ -20,7 +20,7 @@ shift 3
 # Process the remaining arguments, which should all be paths
 until [ -z "$1" ]; do
     echo "Adding $1 to dock..."
-    #dockutil --add "${1}" || echo "Could not add $1 to dock."; exit 1
+    dockutil --add "${1}" || { echo "Could not add $1 to dock." >&2; exit 1; }
     # Shift remaining arguments, so the next one becomes $1.
     shift || break
 done
