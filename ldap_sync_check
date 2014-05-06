@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+
+import sys, getopt
+import time, datetime
+import ldap, ldap.modlist as modlist
+import smtplib
+from email.MIMEText import MIMEText
+
+username = 'cn=ldapadmin,dc=example,dc=com'
+password = 'password'
+
+# user to use for testing
+user = 'sync_check'
+
+# timestamp to use for updates and checking
+timestamp = str(datetime.datetime.now())
+
+should_send_alert = False
+mail_recipient = 'you@example.com'
+message = ["Timestamp should be " + timestamp] # sets first line of alert message
+
+replica_list = [
+		'10.1.1.11',
+		'10.1.1.12',
+		'10.1.1.13',
+		'10.1.1.14'
+		]
+
+# Alert email function
+def send_email(message):
+	subject = "[LDAP] Failed Sync Alert"
+	sender = 'root@ldap-master.example.com'
+
+	msg = MIMEText('\n'.join(message), 'plain')
+	msg['Subject'] = subject
+	msg['From'] = sender
+	msg['To'] = mail_recipient
+
+	s = smtplib.SMTP('mail.example.com')
+	s.sendmail(sender, mail_recipient, msg.as_string())
+	s.quit()
+
+
+def connect_to_ldap(ldap_server, write="r"):
+	try:
+		conn = ldap.initialize('ldap://' + ldap_server)
+		#conn.start_tls_s()
+		if write == "w":
+			conn.simple_bind_s( username, password )
+		else:
+			conn.simple_bind_s()
+		return conn
+	except ldap.LDAPError, e:
+		print e
+
+
+def get_timestamp(conn, dn):
+	global u_dn
+	# search for the supplied user
+	result = conn.search_s( dn, ldap.SCOPE_SUBTREE, 'cn=' + user, None )
+	u_dn = result[0][0]
+
+	# grab the current description value
+	old = {'description': result[0][1]['description'][0]}
+	return u_dn, old
+
+
+def timestamp_ldap_user_description(ldap_server, timestamp):
+	global dn
+	conn = connect_to_ldap(ldap_server, 'w')		
+	# dn of the object to be modified
+	dn = 'ou=People,dc=hhmi,dc=org'
+
+	u_dn, old = get_timestamp(conn, dn)
+	#print old
+	
+	# set a new description value
+	new = {'description': timestamp}
+	#print new
+
+	# make an ldif
+	ldif = modlist.modifyModlist( old, new )
+
+	# modify the entry
+	conn.modify_s(u_dn,ldif)
+
+	# close ldap connection
+	conn.unbind_s()
+
+
+def check_replicas(replicas, timestamp):
+	global should_send_alert, message
+	for replica in replicas:
+		conn = connect_to_ldap(replica)
+		u_dn, local_timestamp = get_timestamp(conn, dn) 
+		if local_timestamp['description'] == timestamp:
+			result = "[ PASS ]   " + replica
+			print result
+			message.append(result)
+		else:
+			result = "[ FAIL ]   " + replica + " -- " + local_timestamp['description']
+			print result
+			message.append(result)
+			should_send_alert = True
+
+
+def main(argv):
+	global should_send_alert, message
+	
+	wait_secs = 30
+
+	if len(sys.argv) == 3:
+		try:
+			opts, args = getopt.getopt(argv,"hw:",["wait="])
+		except getopt.GetoptError as err:
+			print str(err)
+			usage()
+			sys.exit(2)
+		for opt, arg in opts:
+			if opt in ("-h", "--help"):
+				print myname + ' -w <wait time>'
+				sys.exit(0)
+			elif opt in ("-w", "--wait"):
+				wait_secs = arg
+			else:
+				assert False, "unhandled option"
+
+	# change the description field of puppet_user
+	timestamp_ldap_user_description('localhost', timestamp)
+	
+	print ""
+	print "Updated 'puppet_user's description with timestamp '" + timestamp + "'"
+	print ""
+	print "Waiting " + str(wait_secs) + " seconds for records to propagate..."
+	
+	# Wait
+	time.sleep(float(wait_secs))
+
+	# check replicas for accurate syncing
+	result_header = """
+STATUS     REPLICA
+========   ============="""
+	print result_header
+	message.append(result_header)
+
+	check_replicas(replica_list, timestamp)
+
+	#if should_send_alert:
+	#	send_email(message)
+
+	sys.exit(0)
+
+if __name__ == "__main__":
+	main(sys.argv[1:])
