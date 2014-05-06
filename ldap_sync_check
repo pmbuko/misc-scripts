@@ -1,4 +1,17 @@
 #!/usr/bin/env python
+"""
+This script checks whether your OpenLDAP master is properly syncing records
+with your OpenLDAP replicas. It does this my modifying the 'description'
+attribute of a test account with a timestamp, waiting a specified amount of
+time (30 secs by default), and then checking to see if the same attribute
+on the replicas matches the master.
+
+Output goes to the screen by default, but email alerts can be enabled
+by setting 'alerts on = True'. Setting this disables screen output so that
+the job is friendlier when scheduled via cron.
+
+It is meant to be run from your ldap master.
+"""
 
 import sys, getopt
 import time, datetime
@@ -15,25 +28,27 @@ user = 'sync_check'
 # timestamp to use for updates and checking
 timestamp = str(datetime.datetime.now())
 
-should_send_alert = False
+# email options
+alerts_on = False # set to True if you want email alerts
 mail_recipient = 'you@example.com'
+mail_sender = 'root@ldap-master@example.com'
 message = ["Timestamp should be " + timestamp] # sets first line of alert message
 
+# Replace the items with your replicas
 replica_list = [
-		'10.1.1.11',
-		'10.1.1.12',
-		'10.1.1.13',
-		'10.1.1.14'
+		'10.1.1.10',
+		'10.1.2.10',
+		'10.1.3.10',
+		'10.1.4.10'
 		]
 
 # Alert email function
 def send_email(message):
 	subject = "[LDAP] Failed Sync Alert"
-	sender = 'root@ldap-master.example.com'
 
 	msg = MIMEText('\n'.join(message), 'plain')
 	msg['Subject'] = subject
-	msg['From'] = sender
+	msg['From'] = mail_sender
 	msg['To'] = mail_recipient
 
 	s = smtplib.SMTP('mail.example.com')
@@ -89,17 +104,20 @@ def timestamp_ldap_user_description(ldap_server, timestamp):
 
 
 def check_replicas(replicas, timestamp):
-	global should_send_alert, message
-	for replica in replicas:
+  global should_send_alert, message
+
+  should_send_alert = False 
+
+  for replica in replicas:
 		conn = connect_to_ldap(replica)
 		u_dn, local_timestamp = get_timestamp(conn, dn) 
 		if local_timestamp['description'] == timestamp:
 			result = "[ PASS ]   " + replica
-			print result
+      if not alerts_on: print result
 			message.append(result)
 		else:
 			result = "[ FAIL ]   " + replica + " -- " + local_timestamp['description']
-			print result
+      if not alerts_on: print result
 			message.append(result)
 			should_send_alert = True
 
@@ -125,13 +143,13 @@ def main(argv):
 			else:
 				assert False, "unhandled option"
 
-	# change the description field of puppet_user
+	# change the description field of test user
 	timestamp_ldap_user_description('localhost', timestamp)
 	
-	print ""
-	print "Updated 'puppet_user's description with timestamp '" + timestamp + "'"
-	print ""
-	print "Waiting " + str(wait_secs) + " seconds for records to propagate..."
+  if not alerts_on: print ""
+  if not alerts_on: print "Set '" + user + "'s description to timestamp '" + timestamp + "'"
+  if not alerts_on: print ""
+  if not alerts_on: print "Waiting " + str(wait_secs) + " seconds for records to propagate..."
 	
 	# Wait
 	time.sleep(float(wait_secs))
@@ -140,13 +158,13 @@ def main(argv):
 	result_header = """
 STATUS     REPLICA
 ========   ============="""
-	print result_header
+  if not alerts_on: print result_header
 	message.append(result_header)
 
 	check_replicas(replica_list, timestamp)
 
-	#if should_send_alert:
-	#	send_email(message)
+	if alerts_on and should_send_alert:
+	  send_email(message)
 
 	sys.exit(0)
 
