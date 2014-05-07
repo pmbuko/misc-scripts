@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """
 This script checks whether your OpenLDAP master is properly syncing records
-with your OpenLDAP replicas. It does this my modifying the 'description'
+with your OpenLDAP replicas. It does this by modifying the 'description'
 attribute of a test account with a timestamp, waiting a specified amount of
 time (30 secs by default), and then checking to see if the same attribute
 on the replicas matches the master.
 
 Output goes to the screen by default, but email alerts can be enabled
-by setting 'alerts on = True'. Setting this disables screen output so that
-the job is friendlier when scheduled via cron.
+by setting 'alerts_on = True'. Setting this disables screen output so that
+the job is quieter when scheduled via cron.
 
 It is meant to be run from your ldap master.
 """
@@ -82,13 +82,13 @@ def get_timestamp(conn, dn):
 
 def timestamp_ldap_user_description(ldap_server, timestamp):
 	global dn
-	conn = connect_to_ldap(ldap_server, 'w')		
+	conn = connect_to_ldap(ldap_server, 'w')
 	# dn of the object to be modified
 	dn = 'ou=People,dc=hhmi,dc=org'
 
 	u_dn, old = get_timestamp(conn, dn)
 	#print old
-	
+
 	# set a new description value
 	new = {'description': timestamp}
 	#print new
@@ -106,11 +106,11 @@ def timestamp_ldap_user_description(ldap_server, timestamp):
 def check_replicas(replicas, timestamp):
   global should_send_alert, message
 
-  should_send_alert = False 
+  should_send_alert = False
 
   for replica in replicas:
 		conn = connect_to_ldap(replica)
-		u_dn, local_timestamp = get_timestamp(conn, dn) 
+		u_dn, local_timestamp = get_timestamp(conn, dn)
 		if local_timestamp['description'] == timestamp:
 			result = "[ PASS ]   " + replica
       if not alerts_on: print result
@@ -124,7 +124,7 @@ def check_replicas(replicas, timestamp):
 
 def main(argv):
 	global should_send_alert, message
-	
+
 	wait_secs = 30
 
 	if len(sys.argv) == 3:
@@ -145,12 +145,12 @@ def main(argv):
 
 	# change the description field of test user
 	timestamp_ldap_user_description('localhost', timestamp)
-	
+
   if not alerts_on: print ""
   if not alerts_on: print "Set '" + user + "'s description to timestamp '" + timestamp + "'"
   if not alerts_on: print ""
   if not alerts_on: print "Waiting " + str(wait_secs) + " seconds for records to propagate..."
-	
+
 	# Wait
 	time.sleep(float(wait_secs))
 
