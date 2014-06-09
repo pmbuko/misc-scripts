@@ -2,12 +2,6 @@
 
 import sys, getopt, os, glob, shutil, json
 
-# name of this script
-myname = os.path.basename(__file__)
-
-# get list of local homes
-homes = glob.glob("/Users/*")
-
 # relative path to Chrome Default Prefs
 chrome_prefs = "Library/Application Support/Google/Chrome/Default/Preferences"
 
@@ -33,13 +27,14 @@ def set_plugin_state(pref, plugin, state):
     new_prefs.write(json.dumps(json_pref))
     new_prefs.close()
 
+
 def usage(exit_code=1):    
     print """This program will disable or enable Chrome plugins by name for ALL local users
 and must therefore be run as root.
 
 Use '-d|--disable' or '-e|--enable' and then supply the quoted plugin name, e.g.
 
-    """ + myname + """ -d 'Shockwave Flash'
+    """ + os.path.basename(__file__) + """ -d 'Shockwave Flash'
 """
     sys.exit(exit_code)
 
@@ -68,7 +63,7 @@ def main(argv):
             exit("You need root privileges to run this script.\nPlease try again using 'sudo'.")
 
         # Iterate through home directories, looking for Chrome Prefs file
-        for home in homes:
+        for home in glob.glob("/Users/*"):
             pref_file = home + '/' + chrome_prefs
             if os.path.isfile(pref_file):
                 shutil.copy(pref_file, pref_file + '.backup') # Make a backup copy
