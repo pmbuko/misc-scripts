@@ -24,7 +24,7 @@ def set_plugin_state(pref, plugin, state):
 
     # write back modified prefs
     new_prefs = open(pref, 'w+')
-    new_prefs.write(json.dumps(json_pref))
+    new_prefs.write(json.dumps(json_pref, indent=2))
     new_prefs.close()
 
 
