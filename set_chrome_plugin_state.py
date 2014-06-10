@@ -30,7 +30,7 @@ def set_plugin_state(pref, plugin, state):
 
 def usage(exit_code=1):    
     print """This program will disable or enable Chrome plugins by name for ALL local users
-and must therefore be run as root.
+and must therefore be run as root. Chrome should not be running or the update may not take.
 
 Use '-d|--disable' or '-e|--enable' and then supply the quoted plugin name, e.g.
 
