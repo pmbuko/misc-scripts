@@ -8,14 +8,14 @@ fi
 
 # define users to keep in an array
 # (use spaces between items)
-KEEPERS=( admin Shared )
+KEEPERS=( administrator Shared )
 
 # iterate through list of folders in /Users
 for folder in /Users/*; do
     # remove the "/Users/" portion of the path for easier testing
-    user=$(basename ${folder})
+    user=$(basename "${folder}")
     # compare folder name against the array items
-    if [[ "${KEEPERS[*]}" =~ "${user}" ]]; then
+    if [[ "${KEEPERS[*]}" =~ ${user} ]]; then
         # skip if folder is in the skip array
         echo "Skipping ${user}..."
     else
