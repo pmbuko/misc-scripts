@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# This tool returns the most recent cluster utilization percentage data
+# from the specified json file.
+
+jfile="/groups/scicomp/reports/ClusterLoad/cluster_usage.json"
+threshold=50
+
+function fullhelp {
+    cat <<EOF
+
+Cluster Utilization Tool
+
+This tool returns the current (up to 60s old) cluster slot utilization
+percentage as an integer. Supplying the '-t' argument will cause it to
+return true (exit code = 0) or false (exit code = 1) if the current
+utilization is less than the reduced rate chargeback threshold ($threshold).
+
+`basename $0`: `basename $0` [-h] [-t]
+
+You can optionally specify one of the following options:
+
+    -h - displays this help screen
+
+    -t - tests if current utilization percentage is less than
+	     threshold ($threshold) and returns appropriate exit code
+
+With no options given, an integer is returned.
+
+EOF
+exit 0
+}
+
+function percent {
+	perc=$(tail -2 $jfile | awk -F, '/^\[/{sub("]","");print $2}')
+	echo $(printf '%.0f' $perc)
+	exit 0
+}
+
+function ttest {
+	if [ "$(percent)" -lt "$threshold" ]; then
+		exit 0
+	else
+		exit 1
+	fi
+}
+
+function bad_input {
+	echo "Usage: `basename $0` [-h] [-t]"
+	echo "For additional help, run '`basename $0` -h'"
+	exit 1
+}
+
+if [[ $# < 1 ]]; then
+	percent
+elif [[ $# = 1 ]]; then
+	if [ $1 == '-h' ]; then
+		fullhelp
+	elif [ $1 == '-t' ]; then
+		ttest
+	else
+		echo -e "Invalid argument.\n"
+		bad_input
+	fi
+else
+	echo -e "Too many arguments.\n"
+	bad_input
+fi
