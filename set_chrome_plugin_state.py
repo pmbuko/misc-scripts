@@ -10,7 +10,7 @@ def set_plugin_state(pref, plugin, state):
     """
     This function parses the chrome prefs file passed to it, looking
     for the supplied plugin name, and then disables or enables it
-    as requested. It overwrites the existing pref file.
+    as requested.
     """
     json_pref = json.loads(open(pref).read())
 
@@ -31,6 +31,7 @@ def set_plugin_state(pref, plugin, state):
 def usage(exit_code=1):
     print """This program will disable or enable Chrome plugins by name for ALL local users
 and must therefore be run as root. Chrome should not be running or the update may not take.
+The original Chrome prefs file is backed up with '.backup' appended to its name.
 
 Use '-d|--disable' or '-e|--enable' and then supply the quoted plugin name, e.g.
 
