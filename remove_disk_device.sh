@@ -37,7 +37,7 @@ function remove_bypath_links() {
   for link in /dev/disk/by-path/*; do
     if [[ $(readlink -f $link) =~ "$1" ]]; then
       rm -f $link
-      echo "Removed $(ls -l link | awk '{print $9,$10,$11)}')"
+      echo "Removed $(ls -l $link | awk '{print $9,$10,$11)}')"
     fi
   done	
 }
