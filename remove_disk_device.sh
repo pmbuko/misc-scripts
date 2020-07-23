@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function help() {
-    cat<<EOF
+  cat<<EOF
 DISK DEVICE REMOVAL TOOL
 
 This tool removes the specified disk device from the host. It can be used when a disk in
