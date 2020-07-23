@@ -6,7 +6,8 @@ DISK DEVICE REMOVAL TOOL
 
 This tool removes the specified disk device from the host. It can be used when a disk in
 a jbod-configured host is bad and pulled from service but doesn't need to be replaced
-right away. For safety, the device must be unmounted first.
+right away. For safety, the device must be unmounted first, and should be commented out
+in /etc/fstab to prevent it from remounting on reboot.
 
 Specify a single device to be removed as the only argument, e.g.
 
@@ -31,6 +32,9 @@ function check_dev_exists_and_unmounted() {
   if [[ -b /dev/$1 ]]; then
     if [[ $(grep $1 /proc/mounts) ]]; then
       echo "$1 is still mounted. Unmount it first."
+      exit 1
+    elif [[ $(grep $1 /proc/mdstat) ]]; then
+      echo "$1 is used in a raid volume. Exiting."
       exit 1
     fi
   else
@@ -63,6 +67,3 @@ if [[ $# == 1 ]]; then
 else
   help
 fi
-
- pbukowinski@ops0003.prn(ps4219)  ~/d/o/bin   remove_disk_device ⁝ ✚ ✱ 
- ❯                                                                                                                                                      [13:39:50]
